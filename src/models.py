@@ -30,6 +30,13 @@ class Character(db.Model):
     # Relación con favoritos
     favorites: Mapped[list["Favorite"]] = relationship(back_populates="character")
 
+
+    def serialize(self):
+        return {
+            "id": self.id,
+            "name": self.name
+        }
+
 class Planet(db.Model):
     __tablename__ = 'planet'
     id: Mapped[int] = mapped_column(primary_key=True)
@@ -37,6 +44,13 @@ class Planet(db.Model):
     
     # Relación con favoritos
     favorites: Mapped[list["Favorite"]] = relationship(back_populates="planet")
+
+    def serialize(self):
+        return {
+            "id": self.id,
+            "name": self.name
+        }
+
 
 class Favorite(db.Model):
     __tablename__ = 'favorite'
