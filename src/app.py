@@ -49,7 +49,15 @@ def handle_hello():
 def create_user():
     data = request.get_json()
     print(data)
+    email = data.get('email')
+    password = data.get('password')
 
+    if email is None or password is None:
+        return jsonify({"msm": "bad request i need email and password"}), 400
+
+    new_user = User(email=email, password=password, is_active=True)
+    print(new_user)
+    
     return jsonify({"msm": "user created"}), 201
 
 

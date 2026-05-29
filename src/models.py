@@ -5,15 +5,14 @@ from eralchemy2 import render_er
 
 db = SQLAlchemy()
 
+
 class User(db.Model):
     __tablename__ = 'user'
     id: Mapped[int] = mapped_column(primary_key=True)
     email: Mapped[str] = mapped_column(String(120), unique=True, nullable=False)
     password: Mapped[str] = mapped_column(String(80), nullable=False)
     name: Mapped[str] = mapped_column(String(200), nullable=False)
-    
-    # Relación con favoritos
-    favorites: Mapped[list["Favorite"]] = relationship(back_populates="user")
+    favorite: Mapped[list["Favorite"]] = relationship(back_populates="user")
 
     def serialize(self):
         return {
@@ -26,9 +25,8 @@ class Character(db.Model):
     __tablename__ = 'character'
     id: Mapped[int] = mapped_column(primary_key=True)
     name: Mapped[str] = mapped_column(String(100), nullable=False)
+    favorite: Mapped[list["Favorite"]] = relationship(back_populates="character")
     
-    # Relación con favoritos
-    favorites: Mapped[list["Favorite"]] = relationship(back_populates="character")
 
 
     def serialize(self):
@@ -41,10 +39,8 @@ class Planet(db.Model):
     __tablename__ = 'planet'
     id: Mapped[int] = mapped_column(primary_key=True)
     name: Mapped[str] = mapped_column(String(100), nullable=False)
+    favorite: Mapped[list["Favorite"]] = relationship(back_populates="planet")
     
-    # Relación con favoritos
-    favorites: Mapped[list["Favorite"]] = relationship(back_populates="planet")
-
     def serialize(self):
         return {
             "id": self.id,
@@ -58,7 +54,7 @@ class Personajes(db.Model):
     name: Mapped[str] = mapped_column(String(100), nullable=False)
     
     # Relación con favoritos
-    favorites: Mapped[list["Favorite"]] = relationship(back_populates="personajes")
+    favorite: Mapped[list["Favorite"]] = relationship(back_populates="personajes")
 
     def serialize(self):
         return {
@@ -74,13 +70,14 @@ class Favorite(db.Model):
     # Llaves foráneas
     user_id: Mapped[int] = mapped_column(ForeignKey("user.id"), nullable=False)
     character_id: Mapped[int | None] = mapped_column(ForeignKey("character.id"), nullable=True)
+    personaje_id: Mapped[int | None] = mapped_column(ForeignKey("personajes.id"), nullable=True)
     planet_id: Mapped[int | None] = mapped_column(ForeignKey("planet.id"), nullable=True)
     
-    # Relaciones de objeto
-    user: Mapped["User"] = relationship(back_populates="favorites")
-    character: Mapped["Character"] = relationship(back_populates="favorites")
-    planet: Mapped["Planet"] = relationship(back_populates="favorites")
-    planet: Mapped["Personajes"] = relationship(back_populates="favorites")
+    # Relaciones únicas
+    user: Mapped["User"] = relationship(back_populates="favorite")
+    character: Mapped["Character"] = relationship(back_populates="favorite")
+    personajes: Mapped["Personajes"] = relationship(back_populates="favorite")
+    planet: Mapped["Planet"] = relationship(back_populates="favorite")
 
 
 try:
