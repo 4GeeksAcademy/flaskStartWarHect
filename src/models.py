@@ -52,6 +52,21 @@ class Planet(db.Model):
         }
 
 
+class Personajes(db.Model):
+    __tablename__ = 'personajes'
+    id: Mapped[int] = mapped_column(primary_key=True)
+    name: Mapped[str] = mapped_column(String(100), nullable=False)
+    
+    # Relación con favoritos
+    favorites: Mapped[list["Favorite"]] = relationship(back_populates="personajes")
+
+    def serialize(self):
+        return {
+            "id": self.id,
+            "name": self.name
+        }
+
+
 class Favorite(db.Model):
     __tablename__ = 'favorite'
     id: Mapped[int] = mapped_column(primary_key=True)
@@ -65,6 +80,8 @@ class Favorite(db.Model):
     user: Mapped["User"] = relationship(back_populates="favorites")
     character: Mapped["Character"] = relationship(back_populates="favorites")
     planet: Mapped["Planet"] = relationship(back_populates="favorites")
+    planet: Mapped["Personajes"] = relationship(back_populates="favorites")
+
 
 try:
     render_er(db.Model, 'diagram.png')
