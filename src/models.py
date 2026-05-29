@@ -1,48 +1,56 @@
 from flask_sqlalchemy import SQLAlchemy
-from sqlalchemy import String, Boolean
+from sqlalchemy import String, ForeignKey
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from eralchemy2 import render_er
 
 db = SQLAlchemy()
 
 class User(db.Model):
+    __tablename__ = 'user'
     id: Mapped[int] = mapped_column(primary_key=True)
     email: Mapped[str] = mapped_column(String(120), unique=True, nullable=False)
-    password: Mapped[str] = mapped_column(nullable=False)
+    password: Mapped[str] = mapped_column(String(80), nullable=False)
     name: Mapped[str] = mapped_column(String(200), nullable=False)
+    
+    # Relación con favoritos
     favorites: Mapped[list["Favorite"]] = relationship(back_populates="user")
-
 
     def serialize(self):
         return {
             "id": self.id,
             "email": self.email,
-            # do not serialize the password, its a security breach
+            "name": self.name
         }
-    
 
 class Character(db.Model):
-    __tablename__ ='character'
+    __tablename__ = 'character'
     id: Mapped[int] = mapped_column(primary_key=True)
     name: Mapped[str] = mapped_column(String(100), nullable=False)
-    favorites: Mapped[list["Favorite"]] = relationship(back_populates ="planet")
+    
+    # Relación con favoritos
+    favorites: Mapped[list["Favorite"]] = relationship(back_populates="character")
 
 class Planet(db.Model):
     __tablename__ = 'planet'
     id: Mapped[int] = mapped_column(primary_key=True)
     name: Mapped[str] = mapped_column(String(100), nullable=False)
-    fovorites: Mapped[list["Favorite"]] = relationship(back_populates="planet")
+    
+    # Relación con favoritos
+    favorites: Mapped[list["Favorite"]] = relationship(back_populates="planet")
 
 class Favorite(db.Model):
     __tablename__ = 'favorite'
     id: Mapped[int] = mapped_column(primary_key=True)
-    user_id: Mapped[int] = mapped_column(ForeignKey("user.id"))
-    charcter_id: Mapped[int | None] = mapped_column(ForeignKey("planet.id"), nullable=True)
+    
+    # Llaves foráneas
+    user_id: Mapped[int] = mapped_column(ForeignKey("user.id"), nullable=False)
+    character_id: Mapped[int | None] = mapped_column(ForeignKey("character.id"), nullable=True)
     planet_id: Mapped[int | None] = mapped_column(ForeignKey("planet.id"), nullable=True)
+    
+    # Relaciones de objeto
     user: Mapped["User"] = relationship(back_populates="favorites")
     character: Mapped["Character"] = relationship(back_populates="favorites")
     planet: Mapped["Planet"] = relationship(back_populates="favorites")
-
 
 try:
     render_er(db.Model, 'diagram.png')
