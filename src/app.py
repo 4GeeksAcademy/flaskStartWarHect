@@ -9,6 +9,7 @@ from flask_cors import CORS
 from utils import APIException, generate_sitemap
 from admin import setup_admin
 from models import db, User, Character, Planet, Favorite
+
 #from models import Person
 
 app = Flask(__name__)
@@ -62,28 +63,6 @@ def create_user():
     return jsonify({"msg": "Usuario creado exitosamente"}), 201
 
 
-@app.route('/user/<int:user_id>', methods=['PATCH'])
-def update_user(user_id):
-    # 1. Buscar el usuario en la base de datos
-    user = User.query.get(user_id)
-    if user is None:
-        return jsonify({"msg": "Usuario no encontrado"}), 404
-
-    # 2. Obtener los datos del cuerpo de la petición
-    data = request.get_json()
-
-    # 3. Actualizar solo los campos que vienen en el JSON
-    if "name" in data:
-        user.name = data["name"]
-    if "email" in data:
-        user.email = data["email"]
-    # No actualizamos la contraseña sin validaciones extra de seguridad
-
-    # 4. Guardar cambios
-    db.session.commit()
-
-    return jsonify({"msg": "Usuario actualizado", "user": user.serialize()}), 200
-
 
 @app.route('/character', methods=['POST'])
 def create_character():
@@ -115,42 +94,188 @@ def create_planet():
     return jsonify({"msg": "Planeta creado", "planet": new_planet.serialize()}), 201
 
 
-@app.route('/character/<int:character_id>', methods=['PATCH'])
-def update_character(character_id):
-    # Buscar el personaje
-    character = Character.query.get(character_id)
-    if character is None:
-        return jsonify({"msg": "Personaje no encontrado"}), 404
-
-    data = request.get_json()
-
-    # Actualizar solo si el campo viene en el JSON
-    if "name" in data:
-        character.name = data["name"]
-
-    db.session.commit()
-    return jsonify({"msg": "Personaje actualizado", "character": character.serialize()}), 200
-
-
-@app.route('/planet/<int:planet_id>', methods=['PATCH'])
-def update_planet(planet_id):
-    # Buscar el planeta
+@app.route('/planet/<int:planet_id>', methods=['DELETE'])
+def delete_planet(planet_id):
+    # 1. Buscar el planeta en la base de datos
     planet = Planet.query.get(planet_id)
+    
+    # 2. Verificar si existe
     if planet is None:
         return jsonify({"msg": "Planeta no encontrado"}), 404
-
-    data = request.get_json()
-
-    # Actualizar solo si el campo viene en el JSON
-    if "name" in data:
-        planet.name = data["name"]
-
+    
+    # 3. Eliminar el registro y confirmar cambios
+    db.session.delete(planet)
     db.session.commit()
-    return jsonify({"msg": "Planeta actualizado", "planet": planet.serialize()}), 200
+    
+    return jsonify({"msg": "Planeta eliminado correctamente"}), 200
 
-  
+
+@app.route('/character', methods=['GET'])
+def get_all_characters():
+    # Obtener todos los registros de la tabla Character
+    all_characters = Character.query.all()
+    
+    # Serializar los resultados a una lista de diccionarios
+    results = [character.serialize() for character in all_characters]
+    
+    return jsonify(results), 200
+
+
+@app.route('/character/<int:character_id>', methods=['GET'])
+def get_single_character(character_id):
+    # Buscar el personaje por su ID
+    character = Character.query.get(character_id)
+    
+    # Si no existe, devolver error 404
+    if character is None:
+        return jsonify({"msg": "Personaje no encontrado"}), 404
+    
+    # Devolver el personaje serializado
+    return jsonify(character.serialize()), 200
+
+
+@app.route('/character/<int:character_id>', methods=['DELETE'])
+def delete_character(character_id):
+    # 1. Buscar el personaje en la base de datos
+    character = Character.query.get(character_id)
+    
+    # 2. Si no existe, devolvemos un 404
+    if character is None:
+        return jsonify({"msg": "Personaje no encontrado"}), 404
+    
+    # 3. Eliminar el personaje
+    db.session.delete(character)
+    db.session.commit()
+    
+    # 4. Confirmar la eliminación
+    return jsonify({"msg": "Personaje eliminado correctamente"}), 200
+
+@app.route('/user/<int:user_id>', methods=['GET'])
+def get_single_user(user_id):
+    # Buscamos al usuario en la base de datos
+    user = User.query.get(user_id)
+    
+    # Si no existe, devolvemos un 404
+    if user is None:
+        return jsonify({"msg": "Usuario no encontrado"}), 404
+    
+    # Si existe, lo serializamos y lo devolvemos
+    return jsonify(user.serialize()), 200
+
+
+@app.route('/planet/<int:planet_id>', methods=['GET'])
+def get_single_planet(planet_id):
+    planet = Planet.query.get(planet_id)
+    
+    if planet is None:
+        return jsonify({"msg": "Planeta no encontrado"}), 404
+        
+    return jsonify(planet.serialize()), 200
+
+@app.route('/personajes', methods=['GET'])
+def get_all_personajes():
+    todos_los_personajes = Personajes.query.all()
+    results = [p.serialize() for p in todos_los_personajes]
+    return jsonify(results), 200
+
+@app.route('/personajes/<int:personaje_id>', methods=['GET'])
+def get_single_personaje(personajes_id):
+    p = Personajes.query.get(personajes_id)
+    if p is None:
+        return jsonify({"msg": "Personaje no encontrado"}), 404
+    return jsonify(p.serialize()), 200
+
+@app.route('/personajes', methods=['POST'])
+def create_personaje():
+    data = request.get_json()
+    new_personaje = Personajes(
+        name=data.get("name"),
+        gender=data.get("gender"),
+        hair_color=data.get("hair_color")
+    )
+    db.session.add(new_personajes)
+    db.session.commit()
+    return jsonify({"msg": "Personaje creado"}), 201
+
+
+@app.route('/favorite', methods=['POST'])
+@jwt_required()
+def add_favorite():
+    # 1. Obtener datos del usuario y del JSON
+    user_id = get_jwt_identity()
+    data = request.get_json()
+    
+    # 2. Creamos la lógica para saber qué tipo de favorito es
+    # Asegúrate de que los nombres de los campos coincidan con tu modelo Favorite
+    new_favorite = Favorite(
+        user_id=user_id,
+        personaje_id=data.get("personaje_id"), # Opcional: puede ser None
+        planet_id=data.get("planet_id")        # Opcional: puede ser None
+    )
+    
+    db.session.add(new_favorite)
+    db.session.commit()
+    
+    return jsonify({"msg": "Favorito guardado correctamente"}), 201
+
+@app.route('/user/favorites', methods=['GET'])
+@jwt_required()
+def get_user_favorites():
+    # 1. Obtenemos el ID del usuario desde el token
+    user_id = get_jwt_identity()
+    
+    # 2. Buscamos al usuario en la base de datos
+    user = User.query.get(user_id)
+    
+    if user is None:
+        return jsonify({"msg": "Usuario no encontrado"}), 404
+    
+    # 3. Construimos la respuesta personalizada
+    # Asumiendo que en tu modelo User tienes relaciones llamadas 'favoritos_personaje' y 'favoritos_planeta'
+    response = {
+        "user_email": user.email,
+        "favoritos_personajes": [f.personaje.serialize() for f in user.favoritos if f.personaje_id is not None],
+        "favoritos_planetas": [f.planeta.serialize() for f in user.favoritos if f.planeta_id is not None]
+    }
+    
+    return jsonify(response), 200
+
+@app.route('/favorite/personaje/<int:personaje_id>', methods=['DELETE'])
+@jwt_required()
+def delete_favorite_personaje(personaje_id):
+    user_id = get_jwt_identity()
+    
+    # Buscamos el favorito que coincida con este usuario y este personaje
+    favorite = Favorite.query.filter_by(user_id=user_id, personaje_id=personaje_id).first()
+    
+    if favorite is None:
+        return jsonify({"msg": "Favorito no encontrado"}), 404
+        
+    db.session.delete(favorite)
+    db.session.commit()
+    
+    return jsonify({"msg": "Personaje eliminado de favoritos"}), 200
+
+@app.route('/favorite/planet/<int:planet_id>', methods=['DELETE'])
+@jwt_required()
+def delete_favorite_planet(planet_id):
+    user_id = get_jwt_identity()
+    
+    # Buscamos el favorito que coincida con este usuario y este planeta
+    favorite = Favorite.query.filter_by(user_id=user_id, planet_id=planet_id).first()
+    
+    if favorite is None:
+        return jsonify({"msg": "Favorito no encontrado"}), 404
+        
+    db.session.delete(favorite)
+    db.session.commit()
+    
+    return jsonify({"msg": "Planeta eliminado de favoritos"}), 200
+
 
 # this only runs if `$ python src/app.py` is executed
 if __name__ == '__main__':
     PORT = int(os.environ.get('PORT', 3000))
     app.run(host='0.0.0.0', port=PORT, debug=False)
+
+
