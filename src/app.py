@@ -6,15 +6,13 @@ from flask import Flask, request, jsonify, url_for
 from flask_migrate import Migrate
 from flask_swagger import swagger
 from flask_cors import CORS
+from flask_jwt_extended import JWTManager, jwt_required, get_jwt_identity # 1. Importa aquí
 from utils import APIException, generate_sitemap
-from admin import setup_admin
-from models import db, User, Character, Planet, Favorite
 
-#from models import Person
-
-app = Flask(__name__)
+app = Flask(__name__) # 2. Define app primero
 app.url_map.strict_slashes = False
 
+# ... (tu configuración de base de datos) ...
 db_url = os.getenv("DATABASE_URL")
 if db_url is not None:
     app.config['SQLALCHEMY_DATABASE_URI'] = db_url.replace("postgres://", "postgresql://")
@@ -22,9 +20,17 @@ else:
     app.config['SQLALCHEMY_DATABASE_URI'] = "sqlite:////tmp/test.db"
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
+# 3. Inicializa las extensiones
+from models import db, User, Character, Planet, Favorite # Importa db aquí
 MIGRATE = Migrate(app, db)
 db.init_app(app)
 CORS(app)
+
+# 4. Inicializa JWTManager justo después de la app
+jwt = JWTManager(app)
+
+# 5. Finalmente importa admin.py
+from admin import setup_admin
 setup_admin(app)
 
 # Handle/serialize errors like a JSON object
@@ -64,21 +70,6 @@ def create_user():
 
 
 
-@app.route('/character', methods=['POST'])
-def create_character():
-    data = request.get_json()
-    name = data.get('name')
-
-    if not name:
-        return jsonify({"msg": "El nombre es obligatorio"}), 400
-
-    new_character = Character(name=name)
-    db.session.add(new_character)
-    db.session.commit()
-    
-    return jsonify({"msg": "Personaje creado", "character": new_character.serialize()}), 201
-
-
 @app.route('/planet', methods=['POST'])
 def create_planet():
     data = request.get_json()
@@ -109,46 +100,6 @@ def delete_planet(planet_id):
     
     return jsonify({"msg": "Planeta eliminado correctamente"}), 200
 
-
-@app.route('/character', methods=['GET'])
-def get_all_characters():
-    # Obtener todos los registros de la tabla Character
-    all_characters = Character.query.all()
-    
-    # Serializar los resultados a una lista de diccionarios
-    results = [character.serialize() for character in all_characters]
-    
-    return jsonify(results), 200
-
-
-@app.route('/character/<int:character_id>', methods=['GET'])
-def get_single_character(character_id):
-    # Buscar el personaje por su ID
-    character = Character.query.get(character_id)
-    
-    # Si no existe, devolver error 404
-    if character is None:
-        return jsonify({"msg": "Personaje no encontrado"}), 404
-    
-    # Devolver el personaje serializado
-    return jsonify(character.serialize()), 200
-
-
-@app.route('/character/<int:character_id>', methods=['DELETE'])
-def delete_character(character_id):
-    # 1. Buscar el personaje en la base de datos
-    character = Character.query.get(character_id)
-    
-    # 2. Si no existe, devolvemos un 404
-    if character is None:
-        return jsonify({"msg": "Personaje no encontrado"}), 404
-    
-    # 3. Eliminar el personaje
-    db.session.delete(character)
-    db.session.commit()
-    
-    # 4. Confirmar la eliminación
-    return jsonify({"msg": "Personaje eliminado correctamente"}), 200
 
 @app.route('/user/<int:user_id>', methods=['GET'])
 def get_single_user(user_id):
@@ -255,6 +206,7 @@ def delete_favorite_personaje(personaje_id):
     db.session.commit()
     
     return jsonify({"msg": "Personaje eliminado de favoritos"}), 200
+
 
 @app.route('/favorite/planet/<int:planet_id>', methods=['DELETE'])
 @jwt_required()
